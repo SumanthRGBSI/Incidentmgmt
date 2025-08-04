@@ -91,11 +91,19 @@
                 <main id="main-content-area" class="p-4 overflow-y-auto flex-grow">
                     <div id="menus-view" class="main-screen active"><div class="grid grid-cols-2 gap-4"></div></div>
                     <div id="dashboard-view" class="main-screen hidden"><div id="dashboard-tabs" class="flex items-center gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4"></div><div id="dashboard-content" class="space-y-6"></div></div>
-                    <div id="profile-view" class="main-screen hidden"><div class="bg-white p-6 rounded-xl shadow-md"><h2 class="text-xl font-bold text-slate-900 mb-6">User Profile</h2><form id="profile-form" class="space-y-6"><div><label class="block text-sm font-medium">Full Name</label><input type="text" value="John Doe" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div><label class="block text-sm font-medium">Email Address</label><input type="email" value="john.doe@example.com" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div><label class="block text-sm font-medium">Change Password</label><input type="password" placeholder="New Password" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div class="text-right pt-4"><button type="submit" class="py-2 px-6 bg-indigo-600 text-white font-semibold rounded-lg">Save</button></div></form></div></div>
+                    <div id="profile-view" class="main-screen hidden"><div class="bg-white p-6 rounded-xl shadow-md"><h2 class="text-xl font-bold text-slate-900 mb-6">User Profile</h2><form id="profile-form" class="space-y-6"><div><label class="block text-sm font-medium">Full Name</label><input type="text" value="John Doe" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div><label class="block text-sm font-medium">Email Address</label><input type="email" value="john.doe@example.com" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div class="text-right pt-4"><button type="submit" class="py-2 px-6 bg-indigo-600 text-white font-semibold rounded-lg">Save</button></div></form></div></div>
                     <div id="incident-management-module" class="main-screen hidden">
-                        <div id="im-list-view">
-                            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-slate-900">Incidents</h2><button id="im-new-report-btn" class="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm active:scale-95 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span>New</span></button></div>
-                            <div id="im-list-container" class="space-y-3"></div>
+                        <div id="im-list-view" class="flex flex-col h-full">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-xl font-bold text-slate-900">Incidents</h2>
+                                <button id="im-new-report-btn" class="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm active:scale-95 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span>New</span></button>
+                            </div>
+                            <div class="bg-slate-200 p-1 rounded-lg grid grid-cols-3 gap-1 mb-4">
+                                <button data-status="Open" class="im-status-tab bg-white text-slate-700 py-2 rounded-md text-sm font-semibold">Open</button>
+                                <button data-status="In Progress" class="im-status-tab bg-transparent text-slate-500 py-2 rounded-md text-sm font-semibold">In Progress</button>
+                                <button data-status="Closed" class="im-status-tab bg-transparent text-slate-500 py-2 rounded-md text-sm font-semibold">Closed</button>
+                            </div>
+                            <div id="im-list-container" class="space-y-3 overflow-y-auto flex-grow"></div>
                         </div>
                         <div id="im-form-view" class="hidden bg-white p-6 rounded-xl shadow-md"><h2 class="text-xl font-bold mb-4 text-center">Report New Incident</h2><form id="im-form" class="space-y-4"><div><label for="im-title" class="block text-sm font-medium">Title <span class="text-red-500">*</span></label><input type="text" id="im-title" name="title" required class="w-full px-3 py-2 border rounded-lg bg-slate-100"></div><div><label for="im-description" class="block text-sm font-medium">Description <span class="text-red-500">*</span></label><textarea id="im-description" name="description" required class="w-full px-3 py-2 border rounded-lg bg-slate-100" rows="3"></textarea></div><div class="relative"><label for="im-location" class="block text-sm font-medium">Location <span class="text-red-500">*</span></label><input type="text" id="im-location" name="location" required class="w-full px-3 py-2 border rounded-lg bg-slate-100 pr-10"><button type="button" id="im-get-location-btn" class="absolute bottom-1 right-1 p-2 text-indigo-600 hover:bg-slate-200 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg></button></div><div class="grid grid-cols-2 gap-4"><div><label for="im-plant" class="block text-sm font-medium">Plant</label><select id="im-plant" name="plant" class="w-full px-3 py-2 border rounded-lg bg-slate-100"><option value="">Select Plant</option></select></div><div><label for="im-department" class="block text-sm font-medium">Department</label><select id="im-department" name="department" class="w-full px-3 py-2 border rounded-lg bg-slate-100"><option value="">Select Dept</option></select></div></div><div><label class="block text-sm font-medium">Evidence</label><div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-md"><div class="space-y-1 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div class="flex text-sm text-slate-600"><label for="im-file-upload" class="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500"><span>Upload files</span><input id="im-file-upload" name="file-upload" type="file" class="sr-only" multiple></label></div></div></div><div id="im-file-list" class="mt-2 space-y-1"></div></div><div class="flex items-center justify-end gap-2 pt-4 border-t"><button type="button" id="im-cancel-btn" class="py-2 px-4 bg-slate-200 font-semibold rounded-lg text-sm">Cancel</button><button type="submit" class="py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg text-sm">Submit</button></div></form></div>
                         <div id="im-detail-view" class="hidden bg-white p-6 rounded-xl shadow-md"></div>
@@ -213,18 +221,34 @@
         const departments = ["Logistics", "Maintenance", "Health & Safety", "Operations"];
         plants.forEach(p => im.plantSelect.innerHTML += `<option value="${p}">${p}</option>`);
         departments.forEach(d => im.departmentSelect.innerHTML += `<option value="${d}">${d}</option>`);
+        let currentIncidentFilter = 'Open';
         
-        const renderIncidentList = () => { im.listContainer.innerHTML = incidents.map(incident => { const statusStyles = { Open: 'border-green-500', 'In Progress': 'border-yellow-500', Closed: 'border-slate-400' }; return `<div data-id="${incident.id}" class="im-card bg-white p-3 rounded-lg shadow-sm border-l-4 ${statusStyles[incident.status]} cursor-pointer"><h3 class="font-bold text-slate-800">${incident.title}</h3><p class="text-sm text-slate-500">${incident.location}</p></div>`; }).join(''); };
+        const renderIncidentList = (statusFilter) => {
+            const filteredIncidents = incidents.filter(inc => inc.status === statusFilter);
+            if (filteredIncidents.length === 0) {
+                im.listContainer.innerHTML = `<div class="text-center text-slate-500 pt-12">No incidents found for "${statusFilter}" status.</div>`;
+                return;
+            }
+            im.listContainer.innerHTML = filteredIncidents.map(incident => { const statusStyles = { Open: 'border-green-500', 'In Progress': 'border-yellow-500', Closed: 'border-slate-400' }; return `<div data-id="${incident.id}" class="im-card bg-white p-3 rounded-lg shadow-sm border-l-4 ${statusStyles[incident.status]} cursor-pointer"><h3 class="font-bold text-slate-800">${incident.title}</h3><p class="text-sm text-slate-500">${incident.location}</p></div>`; }).join('');
+        };
         const showIncidentDetail = (id) => { const incident = incidents.find(i => i.id === id); const statusStyles = { Open: 'bg-green-100 text-green-800', 'In Progress': 'bg-yellow-100 text-yellow-800', Closed: 'bg-slate-200 text-slate-600' }; im.detailView.innerHTML = `<div class="flex justify-between items-start"><h2 class="text-xl font-bold mb-4">${incident.title}</h2><span class="px-2 py-1 text-xs font-semibold rounded-full ${statusStyles[incident.status]}">${incident.status}</span></div><div class="space-y-4 text-sm"><div class="font-semibold text-slate-500">Location</div><p>${incident.location}</p><div class="font-semibold text-slate-500">Description</div><p>${incident.description}</p></div><button class="im-back-to-list mt-6 text-indigo-600 font-semibold">← Back to list</button>`; im.listView.classList.add('hidden'); im.formView.classList.add('hidden'); im.detailView.classList.remove('hidden'); };
         
         document.getElementById('incident-management-module').addEventListener('click', (e) => {
+            const statusTab = e.target.closest('.im-status-tab');
+            if (statusTab) {
+                currentIncidentFilter = statusTab.dataset.status;
+                document.querySelectorAll('.im-status-tab').forEach(t => { t.classList.replace('bg-white', 'bg-transparent'); t.classList.replace('text-slate-700', 'text-slate-500'); });
+                statusTab.classList.replace('bg-transparent', 'bg-white');
+                statusTab.classList.replace('text-slate-500', 'text-slate-700');
+                renderIncidentList(currentIncidentFilter);
+            }
             if (e.target.closest('#im-new-report-btn')) { im.listView.classList.add('hidden'); im.formView.classList.remove('hidden'); }
             if (e.target.closest('#im-cancel-btn')) { im.formView.classList.add('hidden'); im.listView.classList.remove('hidden'); im.form.reset(); im.fileList.innerHTML = ''; }
             if (e.target.closest('.im-card')) { showIncidentDetail(Number(e.target.closest('.im-card').dataset.id)); }
             if (e.target.closest('.im-back-to-list')) { im.detailView.classList.add('hidden'); im.listView.classList.remove('hidden'); }
             if (e.target.closest('#im-get-location-btn')) { const btn = e.target.closest('#im-get-location-btn'); const originalIcon = btn.innerHTML; btn.innerHTML = '<div class="loader"></div>'; navigator.geolocation.getCurrentPosition(pos => { document.getElementById('im-location').value = `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; btn.innerHTML = originalIcon; }, () => { alert('Could not get location.'); btn.innerHTML = originalIcon; }); }
         });
-        im.form.addEventListener('submit', (e) => { e.preventDefault(); const formData = new FormData(im.form); incidents.unshift({ id: Date.now(), title: formData.get('title'), location: formData.get('location'), description: formData.get('description'), plant: formData.get('plant'), department: formData.get('department'), status: 'Open', files: Array.from(im.fileUpload.files).map(f => f.name) }); im.form.reset(); im.fileList.innerHTML = ''; im.formView.classList.add('hidden'); im.listView.classList.remove('hidden'); renderIncidentList(); });
+        im.form.addEventListener('submit', (e) => { e.preventDefault(); const formData = new FormData(im.form); incidents.unshift({ id: Date.now(), title: formData.get('title'), location: formData.get('location'), description: formData.get('description'), plant: formData.get('plant'), department: formData.get('department'), status: 'Open', files: Array.from(im.fileUpload.files).map(f => f.name) }); im.form.reset(); im.fileList.innerHTML = ''; im.formView.classList.add('hidden'); im.listView.classList.remove('hidden'); document.querySelector('.im-status-tab[data-status="Open"]').click(); });
         im.fileUpload.addEventListener('change', () => { im.fileList.innerHTML = Array.from(im.fileUpload.files).map(f => `<div class="text-xs text-slate-600 p-1 bg-slate-200 rounded">${f.name}</div>`).join(''); });
 
         // --- Dashboard Setup ---
@@ -264,10 +288,11 @@
         });
 
         // --- Initial Load ---
-        renderIncidentList();
+        renderIncidentList(currentIncidentFilter);
         renderDashboard('Incident Mgt.');
     });
     </script>
 
 </body>
 </html>
+
