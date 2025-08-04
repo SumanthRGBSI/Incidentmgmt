@@ -29,6 +29,7 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            min-height: -webkit-fill-available; /* Fix for mobile Safari's 100vh issue */
             box-shadow: 0 10px 40px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
@@ -52,6 +53,15 @@
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .main-content {
+            /* Add padding to the bottom of scrollable areas to avoid being hidden by the nav bar */
+            padding-bottom: 7rem; /* 112px */
+            overflow-y: auto;
+        }
+        .header {
+            /* Add padding to the top of headers to account for device notches/islands */
+            padding-top: env(safe-area-inset-top);
+        }
         .bottom-nav {
             position: absolute;
             bottom: 0;
@@ -62,6 +72,8 @@
             -webkit-backdrop-filter: blur(10px);
             border-top: 1px solid #e5e7eb;
             display: none; /* Hidden by default */
+            /* Add padding to the bottom to account for the home indicator on iPhones */
+            padding-bottom: env(safe-area-inset-bottom);
         }
         .is-logged-in .bottom-nav {
             display: grid; /* Shown after login */
@@ -102,7 +114,9 @@
             background-color: var(--background-color);
             border-top-left-radius: 1.5rem;
             border-top-right-radius: 1.5rem;
-            padding: 1rem 1.5rem 2.5rem;
+            padding: 1rem 1.5rem;
+            /* Add padding to the bottom to account for the home indicator */
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
             transform: translateY(100%);
             transition: transform 0.3s ease-out;
             z-index: 50;
@@ -124,7 +138,7 @@
 <div id="app-root" class="app-container">
 
     <!-- Version Toggle Switch -->
-    <div class="absolute top-4 right-4 z-50">
+    <div class="absolute top-4 right-4 z-50" style="padding-top: env(safe-area-inset-top);">
         <label for="version-toggle" class="flex items-center cursor-pointer">
             <div class="relative">
                 <input type="checkbox" id="version-toggle" class="sr-only" checked>
@@ -167,7 +181,7 @@
 
         <!-- Main App Screens (hidden until login) -->
         <div id="home-screen" class="screen">
-            <header class="p-5 pb-4">
+            <header class="header p-5 pb-4">
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-sm text-slate-500">Welcome back,</p>
@@ -179,7 +193,7 @@
                     </div>
                 </div>
             </header>
-            <div class="px-5 space-y-6 pb-24 overflow-y-auto">
+            <div class="main-content px-5 space-y-6">
                 <div class="radial-gradient-bg text-white p-5 rounded-2xl shadow-lg">
                     <div class="flex items-center gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-80"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
@@ -202,51 +216,63 @@
         </div>
 
         <div id="modules-screen" class="screen">
-            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
-                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                </button>
-                <h1 class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">All Modules</h1>
+            <header class="header p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 grid grid-cols-3 items-center">
+                 <div class="w-10">
+                    <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                 </div>
+                <h1 class="text-xl font-bold text-slate-900 text-center">All Modules</h1>
+                <div class="w-10"></div>
             </header>
-            <div id="all-modules-container" class="p-5 grid grid-cols-2 sm:grid-cols-3 gap-4 pb-24 overflow-y-auto"></div>
+            <div id="all-modules-container" class="main-content p-5 grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
         </div>
 
         <div id="incidents-screen" class="screen">
-            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
-                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                </button>
-                <h1 class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">Incidents</h1>
+            <header class="header p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 grid grid-cols-3 items-center">
+                 <div class="w-10">
+                    <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                 </div>
+                <h1 class="text-xl font-bold text-slate-900 text-center">Incidents</h1>
+                <div class="w-10"></div>
             </header>
-            <div class="px-5 flex-grow">
-                <div class="bg-slate-200 p-1 rounded-full grid grid-cols-3 gap-1 mb-5">
+            <div class="px-5 flex flex-col flex-grow">
+                <div class="bg-slate-200 p-1 rounded-full grid grid-cols-3 gap-1 my-5">
                     <button data-status="Open" class="im-status-tab py-2 rounded-full text-sm font-semibold">Open</button>
                     <button data-status="In Progress" class="im-status-tab py-2 rounded-full text-sm font-semibold">In Progress</button>
                     <button data-status="Closed" class="im-status-tab py-2 rounded-full text-sm font-semibold">Closed</button>
                 </div>
-                <div id="im-list-container" class="space-y-3 pb-24 overflow-y-auto"></div>
+                <div id="im-list-container" class="main-content space-y-3 -mx-5 px-5"></div>
             </div>
         </div>
         
         <div id="incident-detail-screen" class="screen">
-            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
-                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                </button>
-                <h1 class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">Incident Details</h1>
+            <header class="header p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 grid grid-cols-3 items-center">
+                 <div class="w-10">
+                    <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                 </div>
+                <h1 class="text-xl font-bold text-slate-900 text-center truncate">Incident Details</h1>
+                <div class="w-10"></div>
             </header>
-            <div id="incident-detail-content" class="p-5 space-y-4 pb-24 overflow-y-auto"></div>
+            <div id="incident-detail-content" class="main-content p-5 space-y-4"></div>
         </div>
 
         <div id="report-screen" class="screen bg-white">
-            <header class="p-5 flex items-center border-b">
-                <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-                <h1 id="report-screen-title" class="text-xl font-bold text-slate-900 text-center flex-grow -ml-10">New Report</h1>
+            <header class="header p-5 grid grid-cols-3 items-center border-b">
+                <div class="w-10">
+                    <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <h1 id="report-screen-title" class="text-xl font-bold text-slate-900 text-center">New Report</h1>
+                <div class="w-10"></div>
             </header>
-            <div class="p-5 overflow-y-auto flex-grow">
-                <form id="im-form" class="space-y-6">
+            <div class="overflow-y-auto flex-grow">
+                <form id="im-form" class="p-5 space-y-6">
                     <div>
                         <label for="im-title" class="block text-sm font-bold text-slate-700 mb-1">Title <span class="text-red-500">*</span></label>
                         <input type="text" id="im-title" name="title" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
@@ -290,28 +316,28 @@
                     </div>
                 </form>
             </div>
-            <footer class="p-5 border-t bg-white sticky bottom-0">
+            <footer class="p-5 border-t bg-white sticky bottom-0" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
                 <button type="submit" form="im-form" class="w-full py-4 px-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center">Submit Report</button>
             </footer>
         </div>
         
         <div id="dashboard-screen" class="screen">
-            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10">
+            <header class="header p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10">
                 <h1 class="text-2xl font-bold text-slate-900 text-center">Dashboard</h1>
             </header>
-            <div class="px-5 pb-24 overflow-y-auto">
-                <div class="mb-5">
+            <div class="main-content">
+                <div class="px-5 mb-5">
                      <div id="dashboard-tabs" class="flex items-center gap-2 overflow-x-auto pb-2 -mx-5 px-5"></div>
                 </div>
-                <div id="dashboard-content" class="space-y-6"></div>
+                <div id="dashboard-content" class="px-5 space-y-6"></div>
             </div>
         </div>
 
         <div id="profile-screen" class="screen">
-            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10">
+            <header class="header p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10">
                 <h1 class="text-2xl font-bold text-slate-900 text-center">Profile</h1>
             </header>
-             <div class="p-5 space-y-8 pb-24 overflow-y-auto">
+             <div class="main-content p-5 space-y-8">
                 <div class="flex flex-col items-center">
                     <div class="relative">
                         <img src="https://placehold.co/96x96/6366f1/ffffff?text=JD" alt="User Avatar" class="w-24 h-24 rounded-full ring-4 ring-white shadow-lg">
@@ -344,11 +370,14 @@
         </div>
         
         <div id="wip-screen" class="screen">
-             <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
-                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                </button>
-                <h1 id="wip-title" class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">Coming Soon</h1>
+             <header class="header p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 grid grid-cols-3 items-center">
+                 <div class="w-10">
+                    <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                 </div>
+                <h1 id="wip-title" class="text-xl font-bold text-slate-900 text-center">Coming Soon</h1>
+                <div class="w-10"></div>
             </header>
             <div class="flex-grow flex flex-col items-center justify-center text-center p-8">
                  <div class="w-24 h-24 flex items-center justify-center rounded-full bg-slate-200 mb-6">
