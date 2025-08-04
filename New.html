@@ -131,6 +131,19 @@
         #version-toggle:checked ~ .bg-container {
             background-color: #a5b4fc; /* indigo-300 for a subtle active state */
         }
+        /* Simple loader for location button */
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4f46e5;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -442,7 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
     versionToggle.addEventListener('change', () => {
         if (!versionToggle.checked) {
             // When toggled OFF, navigate to the "Old" version.
-            window.location.href = 'index.html';
+            // In this example, we'll just prevent the uncheck.
+            alert("This is the only version available in this demo.");
+            versionToggle.checked = true;
         }
     });
 
@@ -480,7 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const appRoot = document.getElementById('app-root');
-    const bottomNav = document.querySelector('.bottom-nav');
     const fabModalOverlay = document.getElementById('fab-modal-overlay');
     const fabActionSheet = document.getElementById('fab-action-sheet');
     const fabActionList = document.getElementById('fab-action-list');
@@ -520,6 +534,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         newScreen.classList.add('active');
         updateNavActiveState();
+        
+        // --- FIX: Defer chart rendering until the screen is visible ---
+        if (screenId === 'dashboard-screen') {
+            const dashboardContent = document.getElementById('dashboard-content');
+            // Only render charts if the content area is empty, preventing re-renders on back navigation.
+            if (!dashboardContent.hasChildNodes()) {
+                renderDashboard(currentDashboardTab);
+            }
+        }
     };
 
     const goBack = () => {
@@ -535,9 +558,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.nav-btn').forEach(btn => {
             const isTargetScreen = btn.dataset.target === currentScreenId;
             let isParentOfCurrent = false;
-            if (['modules-screen', 'incidents-screen', 'incident-detail-screen', 'report-screen', 'wip-screen'].includes(currentScreenId)) {
+            // Highlight 'Modules' nav if on a sub-screen of modules
+            if (['incidents-screen', 'incident-detail-screen', 'report-screen', 'wip-screen'].includes(currentScreenId) && allModules.find(m => m.target === currentScreenId)) {
                 if (btn.dataset.target === 'modules-screen') isParentOfCurrent = true;
             }
+             // Highlight 'Home' as a parent for modules as well for better UX
+            if (currentScreenId === 'modules-screen' && btn.dataset.target === 'home-screen') {
+                 isParentOfCurrent = false; // Or true, depending on desired UX
+            }
+
             btn.classList.toggle('active', isTargetScreen || isParentOfCurrent);
         });
     };
@@ -559,7 +588,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (navBtn) {
             const target = navBtn.dataset.target;
             if (target && target !== navStack[navStack.length - 1]) {
-                navStack.length = 1; // Reset to home
+                // Reset nav stack to root level when using bottom nav
+                navStack = ['home-screen']; 
                 showScreen(target);
             }
         } else if (imStatusTab) {
@@ -581,7 +611,10 @@ document.addEventListener('DOMContentLoaded', () => {
         plants.forEach(p => im.plantSelect.innerHTML += `<option value="${p}">${p}</option>`);
         departments.forEach(d => im.departmentSelect.innerHTML += `<option value="${d}">${d}</option>`);
         setIncidentFilter(currentIncidentFilter);
-        setupDashboard();
+        
+        // --- FIX: Only set up listeners initially, don't render charts yet ---
+        setupDashboardListeners();
+        
         setupFab();
     };
 
@@ -796,18 +829,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = e.currentTarget;
         const originalIcon = btn.innerHTML;
         btn.innerHTML = '<div class="loader"></div>';
+        btn.disabled = true;
         navigator.geolocation.getCurrentPosition(
             pos => {
                 document.getElementById('im-location').value = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
                 btn.innerHTML = originalIcon;
+                btn.disabled = false;
             },
-            () => { alert('Could not get location. Please enable permissions.'); btn.innerHTML = originalIcon; }
+            () => { 
+                alert('Could not get location. Please enable permissions and try again.'); 
+                btn.innerHTML = originalIcon; 
+                btn.disabled = false;
+            }
         );
     });
 
-    // --- Dashboard Setup ---
-    const setupDashboard = () => {
-        const dashboardTabs = document.getElementById('dashboard-tabs');
+    // --- Dashboard ---
+    const renderDashboard = (dashboardName) => {
         const dashboardContent = document.getElementById('dashboard-content');
         const dashboards = [
             { name: 'Incidents', charts: ['incident-category-chart', 'severity-distribution-chart', 'monthly-incidents-chart'] },
@@ -817,18 +855,19 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: 'Compliance', charts: [] },
         ];
 
-        const renderDashboard = (dashboardName) => {
-            currentDashboardTab = dashboardName;
-            Object.values(chartInstances).forEach(chart => chart.destroy());
-            chartInstances = {};
-            
-            const dashboard = dashboards.find(d => d.name === dashboardName);
-            if (!dashboard || dashboard.charts.length === 0) {
-                dashboardContent.innerHTML = `<div class="text-center text-slate-500 py-16"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400 mb-4"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg><p class="font-semibold">Coming Soon</p><p class="text-sm">Dashboard for ${dashboardName} is not yet available.</p></div>`;
-                return;
-            }
-            dashboardContent.innerHTML = dashboard.charts.map(c => `<div class="bg-white p-4 rounded-2xl shadow-sm"><div class="h-64"><canvas id="${c}"></canvas></div></div>`).join('');
-            
+        currentDashboardTab = dashboardName;
+        Object.values(chartInstances).forEach(chart => chart.destroy());
+        chartInstances = {};
+        
+        const dashboard = dashboards.find(d => d.name === dashboardName);
+        if (!dashboard || dashboard.charts.length === 0) {
+            dashboardContent.innerHTML = `<div class="text-center text-slate-500 py-16"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400 mb-4"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg><p class="font-semibold">Coming Soon</p><p class="text-sm">Dashboard for ${dashboardName} is not yet available.</p></div>`;
+            return;
+        }
+        dashboardContent.innerHTML = dashboard.charts.map(c => `<div class="bg-white p-4 rounded-2xl shadow-sm"><div class="h-64"><canvas id="${c}"></canvas></div></div>`).join('');
+        
+        // Use a timeout to ensure the DOM has updated and the canvas is visible before rendering the chart
+        setTimeout(() => {
             const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 20, font: { size: 12 } } } }, layout: { padding: { top: 10 } } };
 
             if (dashboardName === 'Incidents') {
@@ -840,9 +879,18 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (dashboardName === 'Audits') {
                 chartInstances['audit-score-chart'] = new Chart(document.getElementById('audit-score-chart'), { type: 'line', data: { labels: ['Q1', 'Q2', 'Q3', 'Q4'], datasets: [{ label: 'Avg. Score', data: [82, 85, 91, 88], backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: '#22c55e', tension: 0.4, fill: true }] }, options: {...chartOptions, plugins: { legend: { display: false }, title: { display: true, text: 'Quarterly Audit Scores (%)' } } } });
             }
-        };
+        }, 100); // A small delay is often enough
+    };
+    
+    // --- FIX: This function now only sets up the tab buttons and their click events ---
+    const setupDashboardListeners = () => {
+        const dashboardTabs = document.getElementById('dashboard-tabs');
+        const dashboards = [
+            { name: 'Incidents' }, { name: 'Audits' }, { name: 'Permits' }, 
+            { name: 'Chemicals' }, { name: 'Compliance' }
+        ];
         
-        dashboardTabs.innerHTML = dashboards.map((d, i) => `<button class="dashboard-tab whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors" data-dashboard="${d.name}">${d.name}</button>`).join('');
+        dashboardTabs.innerHTML = dashboards.map(d => `<button class="dashboard-tab whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors" data-dashboard="${d.name}">${d.name}</button>`).join('');
         
         const updateTabs = () => {
              document.querySelectorAll('.dashboard-tab').forEach(t => {
@@ -857,13 +905,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dashboardTabs.addEventListener('click', (e) => {
             const tab = e.target.closest('.dashboard-tab');
-            if (tab) {
+            if (tab && tab.dataset.dashboard !== currentDashboardTab) {
                 renderDashboard(tab.dataset.dashboard);
                 updateTabs();
             }
         });
-        renderDashboard(currentDashboardTab);
-        updateTabs();
+        
+        updateTabs(); // Set initial styles for the tabs
     };
 
     // --- Initial App Load ---
@@ -874,3 +922,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+
