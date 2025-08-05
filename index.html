@@ -21,6 +21,8 @@
             font-family: 'Inter', sans-serif;
             color: var(--text-primary);
             -webkit-tap-highlight-color: transparent;
+            /* This new property prevents the pull-to-refresh browser action */
+            overscroll-behavior-y: contain;
         }
         .app-container {
             max-width: 420px;
@@ -81,7 +83,7 @@
             position: absolute; bottom: 0; left: 0; right: 0;
             background-color: var(--background-color);
             border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem;
-            padding: 1rem 1.5rem 2.5rem;
+            padding: 1.5rem 1.5rem 2.5rem;
             transform: translateY(100%); transition: transform 0.3s ease-out; z-index: 50;
         }
         #fab-action-sheet.active { transform: translateY(0); }
@@ -119,9 +121,12 @@
 
 <div id="app-root" class="app-container">
 
+    <!-- ===== Toast Notification ===== -->
     <div id="toast-notification"></div>
 
+    <!-- ===== Main Content Area ===== -->
     <main class="flex-grow">
+        <!-- Login Flow Screens -->
         <div id="url-screen" class="screen active p-8 justify-center bg-white">
             <div class="text-center">
                 <h1 class="text-3xl font-extrabold text-slate-900">Welcome to Empower EHS</h1>
@@ -150,6 +155,7 @@
             </form>
         </div>
 
+        <!-- Main App Screens -->
         <div id="home-screen" class="screen">
             <header class="p-5 pb-4">
                 <div class="flex justify-between items-center">
@@ -344,6 +350,7 @@
         </div>
     </main>
 
+    <!-- ===== Bottom Navigation ===== -->
     <nav class="bottom-nav grid-cols-5">
         <button class="nav-btn" data-target="home-screen" aria-label="Home">
             <div class="nav-btn-content p-3 flex flex-col items-center gap-1 text-slate-500">
@@ -376,8 +383,12 @@
         </button>
     </nav>
     
+    <!-- Action Sheet Modal -->
     <div id="fab-modal-overlay" aria-hidden="true"></div>
     <div id="fab-action-sheet" role="dialog" aria-modal="true" aria-labelledby="fab-action-sheet-title">
+        <div class="flex justify-center mb-4">
+            <div class="w-10 h-1.5 bg-slate-300 rounded-full"></div>
+        </div>
         <h2 id="fab-action-sheet-title" class="sr-only">Quick Actions</h2>
         <div id="fab-action-list" class="space-y-3"></div>
     </div>
@@ -971,5 +982,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
 
