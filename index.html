@@ -2,299 +2,819 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>EHS Mobile App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Empower EHS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://rsms.me/inter/inter.css');
-        html { height: 100%; }
+        :root {
+            --primary-color: #4f46e5; /* Indigo 600 */
+            --background-color: #f0f2f5;
+            --card-background: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+        }
+        html { scroll-behavior: smooth; }
         body {
-            height: 100%;
-            margin: 0;
-            background-color: #f1f5f9; /* slate-100 */
+            background-color: var(--background-color);
             font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
             -webkit-tap-highlight-color: transparent;
         }
-        #mobile-frame {
-            width: 100%;
-            height: 100%;
+        .app-container {
+            max-width: 420px; /* Typical mobile width */
+            margin: 0 auto;
+            background-color: var(--background-color);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
-        #app-container {
-            flex-grow: 1;
+            min-height: 100vh;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
-            background-color: #f1f5f9; /* slate-100 */
         }
         .screen {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            animation: fadeIn 0.4s ease-in-out;
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #f1f5f9; /* slate-100 */
-            transition: transform 0.4s cubic-bezier(0.45, 0, 0.55, 1);
-            transform: translateX(100%);
-            overflow-y: auto;
+            background-color: var(--background-color);
+        }
+        .screen.active {
             display: flex;
-            flex-direction: column;
         }
-        .screen.active { transform: translateX(0); }
-        .screen.exit-left { transform: translateX(-100%); }
-        .screen::-webkit-scrollbar { width: 4px; }
-        .screen::-webkit-scrollbar-track { background: transparent; }
-        .screen::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        #bottom-nav { display: none; }
-        .loader {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #4f46e5;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid #e5e7eb;
+            display: none; /* Hidden by default */
         }
-        /* Styles for the version toggle switch */
-        #version-toggle:checked ~ .dot {
-            transform: translateX(1.5rem); /* Corresponds to w-6 in Tailwind */
+        .is-logged-in .bottom-nav {
+            display: grid; /* Shown after login */
         }
-        #version-toggle:checked ~ .bg-container {
-            background-color: #a5b4fc; /* indigo-300 for a subtle active state */
+        .nav-btn.active .nav-btn-content {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .fab {
+            background-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+            transition: transform 0.2s ease-out;
+        }
+        .fab:active { transform: scale(0.9); }
+        .radial-gradient-bg {
+            background-image: radial-gradient(circle at top, #5e55f8, var(--primary-color));
+        }
+        
+        /* Action Sheet Modal */
+        #fab-modal-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 40;
+        }
+        #fab-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #fab-action-sheet {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--background-color);
+            border-top-left-radius: 1.5rem;
+            border-top-right-radius: 1.5rem;
+            padding: 1rem 1.5rem 2.5rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+            z-index: 50;
+        }
+        #fab-action-sheet.active {
+            transform: translateY(0);
         }
     </style>
 </head>
 <body>
-    <div id="mobile-frame">
-        <!-- Version Toggle Switch - Now globally positioned -->
-        <div class="absolute top-4 right-4 z-30">
-            <label for="version-toggle" class="flex items-center cursor-pointer">
-                <div class="relative">
-                    <input type="checkbox" id="version-toggle" class="sr-only">
-                    <div class="bg-container block bg-slate-300 w-14 h-8 rounded-full transition"></div>
-                    <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition"></div>
+
+<div id="app-root" class="app-container">
+
+    <!-- ===== Main Content Area ===== -->
+    <main class="flex-grow">
+        <!-- Login Flow Screens -->
+        <div id="url-screen" class="screen active p-8 justify-center bg-white">
+            <div class="text-center">
+                <h1 class="text-3xl font-extrabold text-slate-900">Welcome to Empower EHS</h1>
+                <p class="mt-2 text-slate-500">Enter your application URL to begin.</p>
+            </div>
+            <form id="url-form" class="space-y-6 mt-8">
+                <input id="app-url" name="url" type="url" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="https://yourapp.example.com" value="https://yourapp.example.com">
+                <button type="submit" class="w-full py-3 px-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center">Connect</button>
+            </form>
+        </div>
+
+        <div id="login-screen" class="screen p-8 justify-center bg-white">
+            <div class="text-center">
+                <h1 class="text-3xl font-extrabold text-slate-900">Sign In</h1>
+                <p class="mt-2 text-slate-500">Access your EHS Dashboard</p>
+            </div>
+            <form id="login-form" class="space-y-6 mt-8">
+                <input type="text" id="username" required class="w-full px-4 py-3 border border-slate-300 rounded-lg" placeholder="Username" value="demo_user">
+                <input type="password" id="password" required class="w-full px-4 py-3 border border-slate-300 rounded-lg" placeholder="Password" value="password">
+                <div class="flex items-center justify-between gap-4">
+                    <span id="captcha" class="flex-grow px-4 py-3 bg-slate-200 text-slate-700 rounded-lg text-lg tracking-widest select-none text-center font-bold"></span>
+                    <input type="text" id="captcha-input" required class="w-1/2 px-4 py-3 border border-slate-300 rounded-lg" placeholder="Enter CAPTCHA">
                 </div>
-            </label>
+                <p id="login-error" class="text-red-500 text-sm h-4 text-center"></p>
+                <button type="submit" class="w-full py-3 px-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center">Login</button>
+            </form>
         </div>
-        <div id="app-container">
-            <!-- URL Entry Screen -->
-            <div id="url-screen" class="screen active p-8 justify-center bg-white">
-                <div class="text-center"><h1 class="text-3xl font-extrabold text-slate-900">Welcome</h1><p class="mt-2 text-slate-500">Enter your application URL.</p></div>
-                <form id="url-form" class="space-y-6 mt-8"><input id="app-url" name="url" type="url" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" placeholder="https://yourapp.example.com" value="https://yourapp.example.com"><button type="submit" class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 active:scale-95 transition-transform">Connect</button></form>
-            </div>
-            <!-- Login Screen -->
-            <div id="login-screen" class="screen p-8 justify-center bg-white">
-                <div class="text-center"><h1 class="text-3xl font-extrabold text-slate-900">Sign In</h1><p class="mt-2 text-slate-500">Access your EHS Dashboard</p></div>
-                <form id="login-form" class="space-y-6 mt-8"><input type="text" id="username" required class="w-full px-4 py-3 border border-slate-300 rounded-lg" placeholder="Username" value="demo_user"><input type="password" id="password" required class="w-full px-4 py-3 border border-slate-300 rounded-lg" placeholder="Password" value="password"><div class="flex items-center justify-between"><span id="captcha" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-lg tracking-widest select-none"></span><input type="text" id="captcha-input" required class="w-1/2 px-4 py-3 border border-slate-300 rounded-lg" placeholder="Enter CAPTCHA"></div><p id="login-error" class="text-red-500 text-sm h-4"></p><button type="submit" class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 active:scale-95 transition-transform flex items-center justify-center">Login</button></form>
-            </div>
-            <!-- Main Application Screens -->
-            <div id="main-app" class="screen">
-                <header id="main-header" class="bg-slate-100/80 backdrop-blur-sm sticky top-0 z-10 p-4 border-b border-slate-200 flex items-center justify-between h-16">
-                    <button id="header-back-btn" class="hidden z-20 p-2 rounded-full hover:bg-slate-200 transition-opacity duration-300 opacity-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
-                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><h1 id="header-title" class="text-lg font-bold text-slate-800">Menus</h1></div>
-                </header>
-                <main id="main-content-area" class="p-4 overflow-y-auto flex-grow">
-                    <div id="menus-view" class="main-screen active"><div class="grid grid-cols-2 gap-4"></div></div>
-                    <div id="dashboard-view" class="main-screen hidden"><div id="dashboard-tabs" class="flex items-center gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4"></div><div id="dashboard-content" class="space-y-6"></div></div>
-                    <div id="profile-view" class="main-screen hidden"><div class="bg-white p-6 rounded-xl shadow-md"><h2 class="text-xl font-bold text-slate-900 mb-6">User Profile</h2><form id="profile-form" class="space-y-6"><div><label class="block text-sm font-medium">Full Name</label><input type="text" value="John Doe" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div><label class="block text-sm font-medium">Email Address</label><input type="email" value="john.doe@example.com" class="mt-1 w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100"></div><div class="text-right pt-4"><button type="submit" class="py-2 px-6 bg-indigo-600 text-white font-semibold rounded-lg">Save</button></div></form></div></div>
-                    <div id="incident-management-module" class="main-screen hidden">
-                        <div id="im-list-view" class="flex flex-col h-full">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-xl font-bold text-slate-900">Incidents</h2>
-                                <button id="im-new-report-btn" class="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm active:scale-95 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span>New</span></button>
-                            </div>
-                            <div class="bg-slate-200 p-1 rounded-lg grid grid-cols-3 gap-1 mb-4">
-                                <button data-status="Open" class="im-status-tab bg-white text-slate-700 py-2 rounded-md text-sm font-semibold">Open</button>
-                                <button data-status="In Progress" class="im-status-tab bg-transparent text-slate-500 py-2 rounded-md text-sm font-semibold">In Progress</button>
-                                <button data-status="Closed" class="im-status-tab bg-transparent text-slate-500 py-2 rounded-md text-sm font-semibold">Closed</button>
-                            </div>
-                            <div id="im-list-container" class="space-y-3 overflow-y-auto flex-grow"></div>
-                        </div>
-                        <div id="im-form-view" class="hidden bg-white p-6 rounded-xl shadow-md"><h2 class="text-xl font-bold mb-4 text-center">Report New Incident</h2><form id="im-form" class="space-y-4"><div><label for="im-title" class="block text-sm font-medium">Title <span class="text-red-500">*</span></label><input type="text" id="im-title" name="title" required class="w-full px-3 py-2 border rounded-lg bg-slate-100"></div><div><label for="im-description" class="block text-sm font-medium">Description <span class="text-red-500">*</span></label><textarea id="im-description" name="description" required class="w-full px-3 py-2 border rounded-lg bg-slate-100" rows="3"></textarea></div><div class="relative"><label for="im-location" class="block text-sm font-medium">Location <span class="text-red-500">*</span></label><input type="text" id="im-location" name="location" required class="w-full px-3 py-2 border rounded-lg bg-slate-100 pr-10"><button type="button" id="im-get-location-btn" class="absolute bottom-1 right-1 p-2 text-indigo-600 hover:bg-slate-200 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg></button></div><div class="grid grid-cols-2 gap-4"><div><label for="im-plant" class="block text-sm font-medium">Plant</label><select id="im-plant" name="plant" class="w-full px-3 py-2 border rounded-lg bg-slate-100"><option value="">Select Plant</option></select></div><div><label for="im-department" class="block text-sm font-medium">Department</label><select id="im-department" name="department" class="w-full px-3 py-2 border rounded-lg bg-slate-100"><option value="">Select Dept</option></select></div></div><div><label class="block text-sm font-medium">Evidence</label><div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-md"><div class="space-y-1 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div class="flex text-sm text-slate-600"><label for="im-file-upload" class="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500"><span>Upload files</span><input id="im-file-upload" name="file-upload" type="file" class="sr-only" multiple></label></div></div></div><div id="im-file-list" class="mt-2 space-y-1"></div></div><div class="flex items-center justify-end gap-2 pt-4 border-t"><button type="button" id="im-cancel-btn" class="py-2 px-4 bg-slate-200 font-semibold rounded-lg text-sm">Cancel</button><button type="submit" class="py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg text-sm">Submit</button></div></form></div>
-                        <div id="im-detail-view" class="hidden bg-white p-6 rounded-xl shadow-md"></div>
+
+        <!-- Main App Screens (hidden until login) -->
+        <div id="home-screen" class="screen">
+            <header class="p-5 pb-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-slate-500">Welcome back,</p>
+                        <h1 class="text-2xl font-bold text-slate-900">John Doe</h1>
                     </div>
-                    <div id="wip-view" class="main-screen hidden text-center pt-16"><h2 class="text-xl font-bold">Work in Progress</h2><p class="text-slate-500 mt-2">This feature is coming soon.</p></div>
-                </main>
+                    <div class="relative">
+                        <img src="https://placehold.co/40x40/6366f1/ffffff?text=JD" alt="User Avatar" class="w-10 h-10 rounded-full">
+                        <span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-400 border-2 border-white"></span>
+                    </div>
+                </div>
+            </header>
+            <div class="px-5 space-y-6 pb-24 overflow-y-auto">
+                <div class="radial-gradient-bg text-white p-5 rounded-2xl shadow-lg">
+                    <div class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-80"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                        <h2 class="font-bold text-lg">AI Safety Insight</h2>
+                    </div>
+                    <p class="mt-3 text-sm opacity-90">Based on recent 'Near Miss' reports in the warehouse, there's a 78% probability of a minor incident in the next 5 days. Consider a toolbox talk on situational awareness.</p>
+                </div>
+                <div>
+                     <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-800">Featured Modules</h3>
+                        <button class="nav-action text-sm font-semibold text-indigo-600" data-target="modules-screen">View All</button>
+                    </div>
+                    <div id="featured-modules-container" class="grid grid-cols-4 gap-3 text-center"></div>
+                </div>
+                <div>
+                    <h3 id="my-tasks-header" class="font-bold text-slate-800 mb-3">My Tasks</h3>
+                    <div id="my-tasks-container" class="space-y-3"></div>
+                </div>
             </div>
         </div>
-        <nav id="bottom-nav" class="w-full bg-white border-t border-slate-200 grid grid-cols-3 shadow-inner"><button data-target="menus-view" data-title="Menus" class="nav-btn p-3 flex flex-col items-center gap-1 text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span class="text-xs font-semibold">Menus</span></button><button data-target="dashboard-view" data-title="Dashboard" class="nav-btn p-3 flex flex-col items-center gap-1 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg><span class="text-xs font-semibold">Dashboard</span></button><button data-target="profile-view" data-title="Profile" class="nav-btn p-3 flex flex-col items-center gap-1 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="text-xs font-semibold">Profile</span></button></nav>
+
+        <div id="modules-screen" class="screen">
+            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
+                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h1 class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">All Modules</h1>
+            </header>
+            <div id="all-modules-container" class="p-5 grid grid-cols-2 sm:grid-cols-3 gap-4 pb-24 overflow-y-auto"></div>
+        </div>
+
+        <div id="incidents-screen" class="screen">
+            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
+                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h1 class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">Incidents</h1>
+            </header>
+            <div class="px-5 flex-grow">
+                <div class="bg-slate-200 p-1 rounded-full grid grid-cols-3 gap-1 mb-5">
+                    <button data-status="Open" class="im-status-tab py-2 rounded-full text-sm font-semibold">Open</button>
+                    <button data-status="In Progress" class="im-status-tab py-2 rounded-full text-sm font-semibold">In Progress</button>
+                    <button data-status="Closed" class="im-status-tab py-2 rounded-full text-sm font-semibold">Closed</button>
+                </div>
+                <div id="im-list-container" class="space-y-3 pb-24 overflow-y-auto"></div>
+            </div>
+        </div>
+        
+        <div id="incident-detail-screen" class="screen">
+            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
+                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h1 class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">Incident Details</h1>
+            </header>
+            <div id="incident-detail-content" class="p-5 space-y-4 pb-24 overflow-y-auto"></div>
+        </div>
+
+        <div id="report-screen" class="screen bg-white">
+            <header class="p-5 flex items-center border-b">
+                <button class="nav-action p-2 rounded-full hover:bg-slate-100" data-action="back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <h1 id="report-screen-title" class="text-xl font-bold text-slate-900 text-center flex-grow -ml-10">New Report</h1>
+            </header>
+            <div class="p-5 overflow-y-auto flex-grow">
+                <form id="im-form" class="space-y-6">
+                    <div>
+                        <label for="im-title" class="block text-sm font-bold text-slate-700 mb-1">Title <span class="text-red-500">*</span></label>
+                        <input type="text" id="im-title" name="title" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    </div>
+                     <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="im-plant" class="block text-sm font-bold text-slate-700 mb-1">Plant</label>
+                            <select id="im-plant" name="plant" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white"><option value="">Select Plant</option></select>
+                        </div>
+                        <div>
+                            <label for="im-department" class="block text-sm font-bold text-slate-700 mb-1">Department</label>
+                            <select id="im-department" name="department" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white"><option value="">Select Dept</option></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="im-description" class="block text-sm font-bold text-slate-700 mb-1">Description <span class="text-red-500">*</span></label>
+                        <textarea id="im-description" name="description" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" rows="4"></textarea>
+                    </div>
+                    <div class="relative">
+                        <label for="im-location" class="block text-sm font-bold text-slate-700 mb-1">Location <span class="text-red-500">*</span></label>
+                        <input type="text" id="im-location" name="location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg pr-12">
+                        <button type="button" id="im-get-location-btn" class="absolute bottom-1 right-1 p-2.5 text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Upload Evidence</label>
+                        <div class="mt-1 flex justify-center px-6 pt-8 pb-8 border-2 border-slate-300 border-dashed rounded-xl">
+                            <div class="space-y-1 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <div class="flex text-sm text-slate-600">
+                                    <label for="im-file-upload" class="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                                        <span>Tap to upload files</span>
+                                        <input id="im-file-upload" name="file-upload" type="file" class="sr-only" multiple>
+                                    </label>
+                                </div>
+                                <p class="text-xs text-slate-500">PNG, JPG, MP4 up to 10MB</p>
+                            </div>
+                        </div>
+                        <div id="im-file-list" class="mt-3 space-y-2"></div>
+                    </div>
+                </form>
+            </div>
+            <footer class="p-5 border-t bg-white sticky bottom-0">
+                <button type="submit" form="im-form" class="w-full py-4 px-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center">Submit Report</button>
+            </footer>
+        </div>
+        
+        <div id="dashboard-screen" class="screen">
+            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10">
+                <h1 class="text-2xl font-bold text-slate-900 text-center">Dashboard</h1>
+            </header>
+            <div class="px-5 pb-24 overflow-y-auto">
+                <div class="mb-5">
+                     <div id="dashboard-tabs" class="flex items-center gap-2 overflow-x-auto pb-2 -mx-5 px-5"></div>
+                </div>
+                <div id="dashboard-content" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <div id="profile-screen" class="screen">
+            <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10">
+                <h1 class="text-2xl font-bold text-slate-900 text-center">Profile</h1>
+            </header>
+             <div class="p-5 space-y-8 pb-24 overflow-y-auto">
+                <div class="flex flex-col items-center">
+                    <div class="relative">
+                        <img src="https://placehold.co/96x96/6366f1/ffffff?text=JD" alt="User Avatar" class="w-24 h-24 rounded-full ring-4 ring-white shadow-lg">
+                         <button class="absolute bottom-0 right-0 bg-indigo-600 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white text-white">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                         </button>
+                    </div>
+                     <h2 class="text-2xl font-bold mt-4">John Doe</h2>
+                     <p class="text-slate-500">EHS Manager</p>
+                </div>
+                <div class="space-y-4">
+                    <a href="#" class="flex items-center bg-white p-4 rounded-xl shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span class="ml-4 font-semibold">Account Details</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto text-slate-400"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </a>
+                     <a href="#" class="flex items-center bg-white p-4 rounded-xl shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <span class="ml-4 font-semibold">Security</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto text-slate-400"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </a>
+                     <a href="#" class="flex items-center bg-white p-4 rounded-xl shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span class="ml-4 font-semibold">Help & Support</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto text-slate-400"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </a>
+                </div>
+                 <button class="w-full py-3 bg-red-50 text-red-600 font-bold rounded-xl">Logout</button>
+             </div>
+        </div>
+        
+        <div id="wip-screen" class="screen">
+             <header class="p-5 sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 flex items-center">
+                 <button class="nav-action p-2 rounded-full hover:bg-slate-100 mr-4" data-action="back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h1 id="wip-title" class="text-2xl font-bold text-slate-900 text-center flex-grow -ml-10">Coming Soon</h1>
+            </header>
+            <div class="flex-grow flex flex-col items-center justify-center text-center p-8">
+                 <div class="w-24 h-24 flex items-center justify-center rounded-full bg-slate-200 mb-6">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                 </div>
+                 <h2 id="wip-heading" class="text-2xl font-bold text-slate-800">Feature Under Construction</h2>
+                 <p class="text-slate-500 mt-2 max-w-xs">We're working hard to bring this module to you. Please check back later.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== Bottom Navigation ===== -->
+    <nav class="bottom-nav grid-cols-5">
+        <button class="nav-btn" data-target="home-screen">
+            <div class="nav-btn-content p-3 flex flex-col items-center gap-1 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span class="text-xs font-medium">Home</span>
+            </div>
+        </button>
+        <button class="nav-btn" data-target="modules-screen">
+            <div class="nav-btn-content p-3 flex flex-col items-center gap-1 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span class="text-xs font-medium">Modules</span>
+            </div>
+        </button>
+        <div class="relative">
+             <button id="fab-main-btn" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full fab flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+        </div>
+        <button class="nav-btn" data-target="dashboard-screen">
+            <div class="nav-btn-content p-3 flex flex-col items-center gap-1 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                <span class="text-xs font-medium">Dashboard</span>
+            </div>
+        </button>
+        <button class="nav-btn" data-target="profile-screen">
+            <div class="nav-btn-content p-3 flex flex-col items-center gap-1 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="text-xs font-medium">Profile</span>
+            </div>
+        </button>
+    </nav>
+    
+    <!-- Action Sheet Modal -->
+    <div id="fab-modal-overlay"></div>
+    <div id="fab-action-sheet">
+        <div class="flex justify-center mb-4">
+            <div class="w-10 h-1.5 bg-slate-300 rounded-full"></div>
+        </div>
+        <div id="fab-action-list" class="space-y-3">
+            <!-- Actions will be injected here -->
+        </div>
     </div>
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- App State & Elements ---
-        let currentScreenId = 'url-screen';
-        let lastMainScreenId = 'menus-view';
-        let chartInstances = {};
-        const headerTitle = document.getElementById('header-title');
-        const headerBackBtn = document.getElementById('header-back-btn');
-        const bottomNav = document.getElementById('bottom-nav');
-        // --- Version Toggle Logic ---
-        const versionToggle = document.getElementById('version-toggle');
-        versionToggle.addEventListener('change', () => {
-            if (versionToggle.checked) {
-                // When toggled ON, navigate to the "New" version.
-                window.location.href = 'New.html';
-            }
-        });
-        // --- Navigation ---
-        function showScreen(screenId) {
-            const newScreen = document.getElementById(screenId);
-            const oldScreen = document.getElementById(currentScreenId);
-            if (oldScreen && newScreen && oldScreen !== newScreen) {
-                oldScreen.classList.add('exit-left');
-                newScreen.classList.add('active');
-                setTimeout(() => oldScreen.classList.remove('active', 'exit-left'), 400);
-            }
-            currentScreenId = screenId;
-            bottomNav.style.display = (currentScreenId === 'main-app') ? 'grid' : 'none';
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- App State & Data ---
+    let navStack = ['url-screen'];
+    let chartInstances = {};
+    let currentIncidentFilter = 'Open';
+    let currentDashboardTab = 'Incidents';
+    let captchaText = '';
+    
+    // --- Data Definitions ---
+    const allModules = [
+        { name: "Incidents", target: "incidents-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>', color: 'bg-red-100' },
+        { name: "Work Permits", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>', color: 'bg-blue-100' },
+        { name: "Audits", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>', color: 'bg-green-100' },
+        { name: "Contractors", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>', color: 'bg-yellow-100' },
+        { name: "Chemicals", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>', color: 'bg-purple-100' },
+        { name: "Compliance", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>', color: 'bg-pink-100' },
+        { name: "Waste", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>', color: 'bg-cyan-100' },
+        { name: "Sustainability", target: "wip-screen", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-lime-500"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"></path></svg>', color: 'bg-lime-100' }
+    ];
+    const plants = ["Main Facility", "West Wing", "Logistics Hub", "East Wing"];
+    const departments = ["Logistics", "Maintenance", "Health & Safety", "Operations"];
+    let incidents = [
+        { id: 1, title: "Minor Slip and Fall", status: "Open", location: "Warehouse A", severity: "Low", date: "2 Aug 2025", description: "An employee slipped on a wet patch near the east entrance of Warehouse Section A. No major injuries reported.", plant: "Main Facility", department: "Logistics", files: [] },
+        { id: 2, title: "Forklift Near Miss", status: "In Progress", location: "Dock 3", severity: "Medium", date: "1 Aug 2025", description: "A forklift operator narrowly avoided a collision with a staff member who was not wearing high-visibility clothing.", plant: "Logistics Hub", department: "Logistics", files: ["near_miss_cctv.mp4"] },
+        { id: 3, title: "Chemical Spill", status: "In Progress", location: "Lab 2", severity: "High", date: "29 Jul 2025", description: "A 5-liter container of hydrochloric acid was knocked over, causing a spill. The area was evacuated and cleaned by the hazmat team.", plant: "West Wing", department: "Health & Safety", files: ["spill_report.pdf", "cleanup_photo.jpg"] },
+        { id: 4, title: "Incorrect PPE Usage", status: "Closed", location: "Assembly Line 1", severity: "Low", date: "25 Jul 2025", description: "An employee was observed not wearing safety glasses in a designated area. A toolbox talk was conducted.", plant: "Main Facility", department: "Operations", files: [] },
+    ];
+    let myTasks = [
+        { title: "Review CAPA for INC-002", due: "Tomorrow", severity: "High" },
+        { title: "Approve Hot Work Permit #HW-451", due: "10 Aug 2025", severity: "Medium" },
+        { title: "Conduct monthly safety walk", due: "15 Aug 2025", severity: "Low" }
+    ];
+
+    // --- DOM Elements ---
+    const appRoot = document.getElementById('app-root');
+    const bottomNav = document.querySelector('.bottom-nav');
+    const fabModalOverlay = document.getElementById('fab-modal-overlay');
+    const fabActionSheet = document.getElementById('fab-action-sheet');
+    const fabActionList = document.getElementById('fab-action-list');
+    const featuredModulesContainer = document.getElementById('featured-modules-container');
+    const allModulesContainer = document.getElementById('all-modules-container');
+    const im = {
+        listContainer: document.getElementById('im-list-container'),
+        form: document.getElementById('im-form'),
+        plantSelect: document.getElementById('im-plant'),
+        departmentSelect: document.getElementById('im-department'),
+        fileUpload: document.getElementById('im-file-upload'),
+        fileList: document.getElementById('im-file-list'),
+        detailContent: document.getElementById('incident-detail-content')
+    };
+
+    // --- Navigation Logic ---
+    const showScreen = (screenId, options = {}) => {
+        const { isBack = false, incidentId = null, moduleName = '', reportType = '' } = options;
+        const newScreen = document.getElementById(screenId);
+        if (!newScreen) return;
+
+        if (!isBack && screenId !== navStack[navStack.length - 1]) {
+            navStack.push(screenId);
         }
-        function showMainScreen(screenId, title) {
-            document.querySelectorAll('.main-screen').forEach(s => s.classList.add('hidden'));
-            document.getElementById(screenId).classList.remove('hidden');
-            headerTitle.textContent = title;
-            const isSubPage = !['menus-view', 'dashboard-view', 'profile-view'].includes(screenId);
-            headerBackBtn.classList.toggle('hidden', !isSubPage);
-            headerBackBtn.style.opacity = isSubPage ? '1' : '0';
-            if (!isSubPage) {
-                lastMainScreenId = screenId;
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-indigo-600', 'text-slate-500'));
-                const activeBtn = document.querySelector(`.nav-btn[data-target="${screenId}"]`);
-                if (activeBtn) activeBtn.classList.replace('text-slate-500', 'text-indigo-600');
-            } else {
-                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-indigo-600', 'text-slate-500'));
-            }
+        
+        if (screenId === 'report-screen') {
+            document.getElementById('report-screen-title').textContent = `Report New ${reportType}`;
         }
-        // --- Event Delegation for Main App ---
-        document.getElementById('main-app').addEventListener('click', (e) => {
-            const moduleTile = e.target.closest('.module-tile');
-            if (moduleTile) {
-                const moduleName = moduleTile.dataset.name;
-                const targetScreen = (moduleName === 'Incident Mgt.') ? 'incident-management-module' : 'wip-view';
-                showMainScreen(targetScreen, moduleName);
+        if (screenId === 'wip-screen') {
+            document.getElementById('wip-title').textContent = moduleName;
+            document.getElementById('wip-heading').textContent = `${moduleName} module is under construction`;
+        }
+        if (screenId === 'incident-detail-screen' && incidentId) {
+            renderIncidentDetail(incidentId);
+        }
+
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        newScreen.classList.add('active');
+        updateNavActiveState();
+    };
+
+    const goBack = () => {
+        if (navStack.length > 1) {
+            navStack.pop();
+            const lastScreenId = navStack[navStack.length - 1];
+            showScreen(lastScreenId, { isBack: true });
+        }
+    };
+
+    const updateNavActiveState = () => {
+        const currentScreenId = navStack[navStack.length - 1];
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            const isTargetScreen = btn.dataset.target === currentScreenId;
+            let isParentOfCurrent = false;
+            if (['modules-screen', 'incidents-screen', 'incident-detail-screen', 'report-screen', 'wip-screen'].includes(currentScreenId)) {
+                if (btn.dataset.target === 'modules-screen') isParentOfCurrent = true;
             }
+            btn.classList.toggle('active', isTargetScreen || isParentOfCurrent);
         });
-        // --- Initial Screens & Login Logic ---
-        document.getElementById('url-form').addEventListener('submit', (e) => { e.preventDefault(); showScreen('login-screen'); generateCaptcha(); });
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        loginForm.addEventListener('submit', (e) => {
+    };
+
+    // --- Event Delegation ---
+    appRoot.addEventListener('click', (e) => {
+        const navAction = e.target.closest('.nav-action');
+        const navBtn = e.target.closest('.nav-btn');
+        const imStatusTab = e.target.closest('.im-status-tab');
+        const imCard = e.target.closest('.im-card');
+
+        if (navAction) {
             e.preventDefault();
-            loginError.textContent = '';
-            if (document.getElementById('captcha-input').value.toLowerCase() !== captchaText.toLowerCase()) {
-                loginError.textContent = 'Invalid CAPTCHA. Please try again.';
-                generateCaptcha();
-                return;
+            const target = navAction.dataset.target;
+            const action = navAction.dataset.action;
+            const moduleName = navAction.dataset.moduleName;
+            if (action === 'back') goBack();
+            else if (target) showScreen(target, { moduleName });
+        } else if (navBtn) {
+            const target = navBtn.dataset.target;
+            if (target && target !== navStack[navStack.length - 1]) {
+                navStack.length = 1; // Reset to home
+                showScreen(target);
             }
-            showScreen('main-app');
-            showMainScreen('menus-view', 'Menus');
-        });
-        document.getElementById('profile-form').addEventListener('submit', (e) => { e.preventDefault(); alert('Profile saved!'); });
-        headerBackBtn.addEventListener('click', () => {
-            const lastMainScreenTitle = document.querySelector(`.nav-btn[data-target="${lastMainScreenId}"]`).dataset.title;
-            showMainScreen(lastMainScreenId, lastMainScreenTitle);
-        });
-        document.querySelectorAll('.nav-btn').forEach(btn => { btn.addEventListener('click', () => { showMainScreen(btn.dataset.target, btn.dataset.title); }); });
-        // --- CAPTCHA ---
-        const captchaEl = document.getElementById('captcha');
-        let captchaText = '';
-        function generateCaptcha() { captchaText = Math.random().toString(36).substring(2, 7).toUpperCase(); captchaEl.textContent = captchaText; document.getElementById('captcha-input').value = ''; }
-        // --- Modules Setup ---
-        const modules = [
-            { name: "Incident Mgt.", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>', color: 'bg-red-100' },
-            { name: "Work Permit", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>', color: 'bg-blue-100' },
-            { name: "Compliance", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>', color: 'bg-green-100' },
-            { name: "Contractor", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>', color: 'bg-yellow-100' },
-            { name: "Chemicals", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>', color: 'bg-purple-100' },
-            { name: "Audit", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-500"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>', color: 'bg-pink-100' }
-        ];
-        document.querySelector('#menus-view .grid').innerHTML = modules.map(m => `<button data-name="${m.name}" class="module-tile bg-white p-4 rounded-xl shadow-md text-center flex flex-col items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all active:scale-95"><div class="w-12 h-12 flex items-center justify-center rounded-full ${m.color}">${m.icon}</div><span class="font-semibold text-slate-800 text-sm">${m.name}</span></button>`).join('');
-        // --- Incident Management Module Logic ---
-        const im = {
-            listView: document.getElementById('im-list-view'),
-            formView: document.getElementById('im-form-view'),
-            detailView: document.getElementById('im-detail-view'),
-            listContainer: document.getElementById('im-list-container'),
-            form: document.getElementById('im-form'),
-            plantSelect: document.getElementById('im-plant'),
-            departmentSelect: document.getElementById('im-department'),
-            fileUpload: document.getElementById('im-file-upload'),
-            fileList: document.getElementById('im-file-list'),
-        };
-        let incidents = [ { id: 1, title: "Minor Slip and Fall", status: "Open", location: "Warehouse A", description: "An employee slipped on a wet patch near the east entrance of Warehouse Section A. No major injuries reported.", plant: "Main Facility", department: "Logistics", files: [] }, { id: 2, title: "Forklift Collision", status: "In Progress", location: "Dock 3", description: "A forklift operator collided with a stack of pallets due to a reported brake malfunction.", plant: "Logistics Hub", department: "Logistics", files: ["forklift_damage.jpg"] }, { id: 3, title: "Power Outage", status: "Closed", location: "West Wing", description: "A scheduled power outage for maintenance was completed successfully.", plant: "West Wing", department: "Maintenance", files: [] }];
-        const plants = ["Main Facility", "West Wing", "Logistics Hub", "East Wing"];
-        const departments = ["Logistics", "Maintenance", "Health & Safety", "Operations"];
+        } else if (imStatusTab) {
+            setIncidentFilter(imStatusTab.dataset.status);
+        } else if (imCard) {
+            const incidentId = parseInt(imCard.dataset.id, 10);
+            showScreen('incident-detail-screen', { incidentId });
+        }
+    });
+
+    // --- Login and Initialization ---
+    const initializeApp = () => {
+        appRoot.classList.add('is-logged-in');
+        navStack.length = 0;
+        showScreen('home-screen');
+
+        renderModules();
+        renderTasks();
         plants.forEach(p => im.plantSelect.innerHTML += `<option value="${p}">${p}</option>`);
         departments.forEach(d => im.departmentSelect.innerHTML += `<option value="${d}">${d}</option>`);
-        let currentIncidentFilter = 'Open';
-        const renderIncidentList = (statusFilter) => {
-            const filteredIncidents = incidents.filter(inc => inc.status === statusFilter);
-            if (filteredIncidents.length === 0) {
-                im.listContainer.innerHTML = `<div class="text-center text-slate-500 pt-12">No incidents found for "${statusFilter}" status.</div>`;
-                return;
-            }
-            im.listContainer.innerHTML = filteredIncidents.map(incident => { const statusStyles = { Open: 'border-green-500', 'In Progress': 'border-yellow-500', Closed: 'border-slate-400' }; return `<div data-id="${incident.id}" class="im-card bg-white p-3 rounded-lg shadow-sm border-l-4 ${statusStyles[incident.status]} cursor-pointer"><h3 class="font-bold text-slate-800">${incident.title}</h3><p class="text-sm text-slate-500">${incident.location}</p></div>`; }).join('');
+        setIncidentFilter(currentIncidentFilter);
+        setupDashboard();
+        setupFab();
+    };
+
+    const generateCaptcha = () => {
+        captchaText = Math.random().toString(36).substring(2, 8).toUpperCase();
+        document.getElementById('captcha').textContent = captchaText;
+        document.getElementById('captcha-input').value = '';
+    };
+
+    document.getElementById('url-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        showScreen('login-screen');
+        generateCaptcha();
+    });
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const loginError = document.getElementById('login-error');
+        if (document.getElementById('captcha-input').value.toUpperCase() !== captchaText) {
+            loginError.textContent = 'Invalid CAPTCHA. Please try again.';
+            generateCaptcha();
+            return;
+        }
+        loginError.textContent = '';
+        initializeApp();
+    });
+
+    // --- FAB Action Sheet ---
+    const setupFab = () => {
+        const fabBtn = document.getElementById('fab-main-btn');
+        const actions = [
+            { name: 'Report Incident', target: 'report-screen', reportType: 'Incident', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' },
+            { name: 'Report Near Miss', target: 'report-screen', reportType: 'Near Miss', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l4.5-6a1 1 0 0 1 1.56 0l4.5 6A1 1 0 0 1 13 14H4z"></path><path d="M17.1 9.42 20.4 14"></path><path d="m21 15-3.3-4.58"></path><path d="M3 20h18"></path></svg>' },
+            { name: 'Log Observation', target: 'report-screen', reportType: 'Observation', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>' },
+            { name: 'Create Work Permit', target: 'wip-screen', moduleName: 'Work Permits', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>' }
+        ];
+
+        fabActionList.innerHTML = actions.map(action => `
+            <button class="w-full flex items-center gap-4 text-left p-4 bg-white rounded-xl shadow-sm hover:bg-slate-50 fab-action" data-target="${action.target}" data-report-type="${action.reportType || ''}" data-module-name="${action.moduleName || ''}">
+                <div class="w-10 h-10 flex items-center justify-center bg-slate-100 rounded-lg text-indigo-600">${action.icon}</div>
+                <span class="font-semibold text-slate-700">${action.name}</span>
+            </button>
+        `).join('');
+
+        const toggleFabMenu = (show) => {
+            fabModalOverlay.classList.toggle('active', show);
+            fabActionSheet.classList.toggle('active', show);
         };
-        const showIncidentDetail = (id) => { const incident = incidents.find(i => i.id === id); const statusStyles = { Open: 'bg-green-100 text-green-800', 'In Progress': 'bg-yellow-100 text-yellow-800', Closed: 'bg-slate-200 text-slate-600' }; im.detailView.innerHTML = `<div class="flex justify-between items-start"><h2 class="text-xl font-bold mb-4">${incident.title}</h2><span class="px-2 py-1 text-xs font-semibold rounded-full ${statusStyles[incident.status]}">${incident.status}</span></div><div class="space-y-4 text-sm"><div class="font-semibold text-slate-500">Location</div><p>${incident.location}</p><div class="font-semibold text-slate-500">Description</div><p>${incident.description}</p></div><button class="im-back-to-list mt-6 text-indigo-600 font-semibold">← Back to list</button>`; im.listView.classList.add('hidden'); im.formView.classList.add('hidden'); im.detailView.classList.remove('hidden'); };
-        document.getElementById('incident-management-module').addEventListener('click', (e) => {
-            const statusTab = e.target.closest('.im-status-tab');
-            if (statusTab) {
-                currentIncidentFilter = statusTab.dataset.status;
-                document.querySelectorAll('.im-status-tab').forEach(t => { t.classList.replace('bg-white', 'bg-transparent'); t.classList.replace('text-slate-700', 'text-slate-500'); });
-                statusTab.classList.replace('bg-transparent', 'bg-white');
-                statusTab.classList.replace('text-slate-500', 'text-slate-700');
-                renderIncidentList(currentIncidentFilter);
+
+        fabBtn.addEventListener('click', () => toggleFabMenu(true));
+        fabModalOverlay.addEventListener('click', () => toggleFabMenu(false));
+        
+        fabActionList.addEventListener('click', (e) => {
+            const actionBtn = e.target.closest('.fab-action');
+            if (actionBtn) {
+                toggleFabMenu(false);
+                const { target, reportType, moduleName } = actionBtn.dataset;
+                setTimeout(() => { // Allow menu to close before navigating
+                    showScreen(target, { reportType, moduleName });
+                }, 300);
             }
-            if (e.target.closest('#im-new-report-btn')) { im.listView.classList.add('hidden'); im.formView.classList.remove('hidden'); }
-            if (e.target.closest('#im-cancel-btn')) { im.formView.classList.add('hidden'); im.listView.classList.remove('hidden'); im.form.reset(); im.fileList.innerHTML = ''; }
-            if (e.target.closest('.im-card')) { showIncidentDetail(Number(e.target.closest('.im-card').dataset.id)); }
-            if (e.target.closest('.im-back-to-list')) { im.detailView.classList.add('hidden'); im.listView.classList.remove('hidden'); }
-            if (e.target.closest('#im-get-location-btn')) { const btn = e.target.closest('#im-get-location-btn'); const originalIcon = btn.innerHTML; btn.innerHTML = '<div class="loader"></div>'; navigator.geolocation.getCurrentPosition(pos => { document.getElementById('im-location').value = `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; btn.innerHTML = originalIcon; }, () => { alert('Could not get location.'); btn.innerHTML = originalIcon; }); }
         });
-        im.form.addEventListener('submit', (e) => { e.preventDefault(); const formData = new FormData(im.form); incidents.unshift({ id: Date.now(), title: formData.get('title'), location: formData.get('location'), description: formData.get('description'), plant: formData.get('plant'), department: formData.get('department'), status: 'Open', files: Array.from(im.fileUpload.files).map(f => f.name) }); im.form.reset(); im.fileList.innerHTML = ''; im.formView.classList.add('hidden'); im.listView.classList.remove('hidden'); document.querySelector('.im-status-tab[data-status="Open"]').click(); });
-        im.fileUpload.addEventListener('change', () => { im.fileList.innerHTML = Array.from(im.fileUpload.files).map(f => `<div class="text-xs text-slate-600 p-1 bg-slate-200 rounded">${f.name}</div>`).join(''); });
-        // --- Dashboard Setup ---
+    };
+
+    // --- Rendering Functions ---
+    const renderModules = () => {
+        featuredModulesContainer.innerHTML = allModules.slice(0, 4).map(module => `
+            <a href="#" class="nav-action p-3 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow" data-target="${module.target}" data-module-name="${module.name}">
+                <div class="w-12 h-12 flex items-center justify-center rounded-full ${module.color} mx-auto">${module.icon}</div>
+                <span class="text-xs font-medium text-slate-600 mt-2 block">${module.name}</span>
+            </a>
+        `).join('');
+        
+        allModulesContainer.innerHTML = allModules.map(module => `
+            <button class="nav-action module-button bg-white p-4 rounded-xl shadow-md text-center flex flex-col items-center justify-center gap-3 hover:shadow-lg hover:-translate-y-0.5 transition-all active:scale-95" data-target="${module.target}" data-module-name="${module.name}">
+                <div class="w-14 h-14 flex items-center justify-center rounded-full ${module.color}">${module.icon}</div>
+                <span class="font-semibold text-slate-800">${module.name}</span>
+            </button>
+        `).join('');
+    };
+
+    const renderTasks = () => {
+        const container = document.getElementById('my-tasks-container');
+        const header = document.getElementById('my-tasks-header');
+        header.textContent = `My Tasks (${myTasks.length})`;
+
+        const severityStyles = { High: 'bg-red-100 text-red-600', Medium: 'bg-blue-100 text-blue-600', Low: 'bg-yellow-100 text-yellow-600' };
+        const iconStyles = { High: 'text-red-500', Medium: 'text-blue-500', Low: 'text-yellow-500'};
+        
+        if (myTasks.length === 0) {
+            container.innerHTML = `<div class="text-center text-slate-500 p-4">No pending tasks. Great job!</div>`;
+            return;
+        }
+        container.innerHTML = myTasks.map(task => `
+            <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center gap-4">
+                <div class="w-10 h-10 flex-shrink-0 ${severityStyles[task.severity]} rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${iconStyles[task.severity]}"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                </div>
+                <div>
+                    <p class="font-semibold text-sm">${task.title}</p>
+                    <p class="text-xs ${task.due === 'Tomorrow' ? 'text-red-500 font-medium' : 'text-slate-500'}">Due: ${task.due}</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto text-slate-400"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+        `).join('');
+    };
+
+    // --- Incident Management ---
+    const setIncidentFilter = (status) => {
+        currentIncidentFilter = status;
+        document.querySelectorAll('.im-status-tab').forEach(t => {
+            const isActive = t.dataset.status === status;
+            t.classList.toggle('bg-white', isActive);
+            t.classList.toggle('text-indigo-600', isActive);
+            t.classList.toggle('shadow', isActive);
+            t.classList.toggle('text-slate-500', !isActive);
+        });
+        renderIncidentList();
+    };
+
+    const renderIncidentList = () => {
+        const severityStyles = { High: 'bg-red-500', Medium: 'bg-yellow-400', Low: 'bg-green-500' };
+        const filteredIncidents = incidents.filter(inc => inc.status === currentIncidentFilter);
+        im.listContainer.innerHTML = filteredIncidents.length === 0 
+            ? `<div class="text-center text-slate-500 pt-16"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400 mb-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><p class="font-semibold">All Clear!</p><p class="text-sm">No incidents with "${currentIncidentFilter}" status.</p></div>`
+            : filteredIncidents.map(incident => `
+                <div class="im-card bg-white p-4 rounded-2xl shadow-sm flex items-center gap-4 cursor-pointer" data-id="${incident.id}">
+                    <div class="w-1.5 h-12 rounded-full ${severityStyles[incident.severity]}"></div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">${incident.title}</h3>
+                        <p class="text-sm text-slate-500">${incident.location} &bull; ${incident.date}</p>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto text-slate-400"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+            `).join('');
+    };
+    
+    const renderIncidentDetail = (id) => {
+        const incident = incidents.find(i => i.id === id);
+        if (!incident) {
+            im.detailContent.innerHTML = `<p>Incident not found.</p>`;
+            return;
+        }
+        const severityStyles = { High: 'bg-red-100 text-red-700', Medium: 'bg-yellow-100 text-yellow-700', Low: 'bg-green-100 text-green-700' };
+        im.detailContent.innerHTML = `
+            <div class="bg-white p-5 rounded-2xl shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-slate-800">${incident.title}</h2>
+                    <span class="px-3 py-1 text-xs font-bold rounded-full ${severityStyles[incident.severity]}">${incident.severity}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-sm text-slate-600">
+                    <div><strong class="block text-slate-800">Date</strong>${incident.date}</div>
+                    <div><strong class="block text-slate-800">Status</strong>${incident.status}</div>
+                    <div><strong class="block text-slate-800">Plant</strong>${incident.plant}</div>
+                    <div><strong class="block text-slate-800">Department</strong>${incident.department}</div>
+                </div>
+                <div class="mt-4 text-sm text-slate-600">
+                    <strong class="block text-slate-800">Location</strong>
+                    <p>${incident.location}</p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-2">Description</h3>
+                <p class="text-sm text-slate-600">${incident.description}</p>
+            </div>
+            ${incident.files.length > 0 ? `
+            <div class="bg-white p-5 rounded-2xl shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-3">Attached Files</h3>
+                <div class="space-y-2">
+                ${incident.files.map(file => `
+                    <div class="flex items-center gap-3 bg-slate-100 p-2 rounded-lg text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500 flex-shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        <span class="font-medium text-slate-700 flex-grow truncate">${file}</span>
+                    </div>
+                `).join('')}
+                </div>
+            </div>` : ''}
+        `;
+    };
+
+    im.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(im.form);
+        incidents.unshift({
+            id: Date.now(),
+            title: formData.get('title'),
+            location: formData.get('location'),
+            plant: formData.get('plant'),
+            department: formData.get('department'),
+            description: formData.get('description'),
+            status: 'Open',
+            severity: 'Medium',
+            date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            files: Array.from(im.fileUpload.files).map(f => f.name)
+        });
+        im.form.reset();
+        im.fileList.innerHTML = '';
+        goBack();
+        setIncidentFilter('Open');
+    });
+
+    im.fileUpload.addEventListener('change', () => {
+        im.fileList.innerHTML = Array.from(im.fileUpload.files).map(f => `
+            <div class="flex items-center gap-3 bg-slate-100 p-2 rounded-lg text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span class="font-medium text-slate-700 flex-grow truncate">${f.name}</span>
+                <span class="text-slate-500 text-xs">${(f.size / 1024).toFixed(1)} KB</span>
+            </div>`).join('');
+    });
+    
+    document.getElementById('im-get-location-btn').addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        const originalIcon = btn.innerHTML;
+        btn.innerHTML = '<div class="loader"></div>';
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                document.getElementById('im-location').value = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+                btn.innerHTML = originalIcon;
+            },
+            () => { alert('Could not get location. Please enable permissions.'); btn.innerHTML = originalIcon; }
+        );
+    });
+
+    // --- Dashboard Setup ---
+    const setupDashboard = () => {
         const dashboardTabs = document.getElementById('dashboard-tabs');
         const dashboardContent = document.getElementById('dashboard-content');
-        const dashboards = [ { name: 'Incident Mgt.', charts: ['incident-category-chart', 'severity-distribution-chart', 'monthly-incidents-chart'] }, { name: 'CAPA', charts: ['capa-status-chart'] }, { name: 'Work Permits', charts: ['permit-status-chart', 'permit-monthly-chart'] }, { name: 'Safety Audits', charts: ['audit-type-chart', 'audit-score-chart'] }, { name: 'Compliance', charts: [] } ];
-        dashboards.forEach((d, i) => { const btn = document.createElement('button'); btn.className = `dashboard-tab whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${i === 0 ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600'}`; btn.textContent = d.name; btn.dataset.dashboard = d.name; dashboardTabs.appendChild(btn); });
-        const destroyCharts = () => { for (let id in chartInstances) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } } };
+        const dashboards = [
+            { name: 'Incidents', charts: ['incident-category-chart', 'severity-distribution-chart', 'monthly-incidents-chart'] },
+            { name: 'Audits', charts: ['audit-score-chart'] },
+            { name: 'Permits', charts: ['permit-status-chart'] },
+            { name: 'Chemicals', charts: [] },
+            { name: 'Compliance', charts: [] },
+        ];
+
         const renderDashboard = (dashboardName) => {
-            destroyCharts();
+            currentDashboardTab = dashboardName;
+            Object.values(chartInstances).forEach(chart => chart.destroy());
+            chartInstances = {};
+            
             const dashboard = dashboards.find(d => d.name === dashboardName);
-            if (dashboard.charts.length === 0) { dashboardContent.innerHTML = `<div class="text-center text-slate-500 pt-12">No data available for this view.</div>`; return; }
-            dashboardContent.innerHTML = dashboard.charts.map(c => `<div class="bg-white p-4 rounded-xl shadow-md"><div class="h-56"><canvas id="${c}"></canvas></div></div>`).join('');
-            if (dashboardName === 'Incident Mgt.') {
-                chartInstances['incident-category-chart'] = new Chart(document.getElementById('incident-category-chart'), { type: 'doughnut', data: { labels: ['Chemical', 'Fall', 'Equipment'], datasets: [{ data: [32, 21, 19], backgroundColor: ['#ef4444', '#f97316', '#3b82f6'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
-                chartInstances['severity-distribution-chart'] = new Chart(document.getElementById('severity-distribution-chart'), { type: 'bar', data: { labels: ['First Aid', 'Lost Time', 'Medical'], datasets: [{ data: [24, 30, 18], backgroundColor: ['#22c55e', '#a855f7', '#3b82f6'] }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } } });
-                chartInstances['monthly-incidents-chart'] = new Chart(document.getElementById('monthly-incidents-chart'), { type: 'bar', data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], datasets: [{ label: 'Near Miss', data: [8, 10, 6, 8, 3], backgroundColor: '#22c55e' }, { label: 'Injury', data: [3, 7, 4, 3, 2], backgroundColor: '#ef4444' }, { label: 'Spill', data: [0, 3, 6, 5, 4], backgroundColor: '#f97316' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
-            } else if (dashboardName === 'CAPA') {
-                 chartInstances['capa-status-chart'] = new Chart(document.getElementById('capa-status-chart'), { type: 'doughnut', data: { labels: ['Open', 'In Progress', 'Closed'], datasets: [{ data: [25, 25, 24], backgroundColor: ['#3b82f6', '#f97316', '#6b7280'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
-            } else if (dashboardName === 'Work Permits') {
-                chartInstances['permit-status-chart'] = new Chart(document.getElementById('permit-status-chart'), { type: 'bar', data: { labels: ['Confined Space', 'Hot Work', 'Work at Height'], datasets: [{ label: 'Draft', data: [10, 8, 10], backgroundColor: '#9ca3af' }, { label: 'Issued', data: [12, 10, 12], backgroundColor: '#34d399' }, { label: 'Active', data: [14, 8, 14], backgroundColor: '#3b82f6' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
-                chartInstances['permit-monthly-chart'] = new Chart(document.getElementById('permit-monthly-chart'), { type: 'bar', data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], datasets: [{ label: 'Confined Space', data: [10, 18, 10, 18, 12], backgroundColor: '#60a5fa' }, { label: 'Work at Height', data: [8, 6, 5, 7, 4], backgroundColor: '#a78bfa' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
-            } else if (dashboardName === 'Safety Audits') {
-                chartInstances['audit-type-chart'] = new Chart(document.getElementById('audit-type-chart'), { type: 'bar', data: { labels: ['Compliance', 'External', 'Internal'], datasets: [{ label: 'Open', data: [7, 8, 12], backgroundColor: '#3b82f6' }, { label: 'Closed', data: [8, 7, 8], backgroundColor: '#6b7280' }, { label: 'Verified', data: [9, 7, 10], backgroundColor: '#10b981' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
-                chartInstances['audit-score-chart'] = new Chart(document.getElementById('audit-score-chart'), { type: 'bar', data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], datasets: [{ label: 'Internal', data: [74, 82, 77, 90, 74], backgroundColor: '#a78bfa' }, { label: 'External', data: [78, 91, 75, 74, 78], backgroundColor: '#fb923c' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
+            if (!dashboard || dashboard.charts.length === 0) {
+                dashboardContent.innerHTML = `<div class="text-center text-slate-500 py-16"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-400 mb-4"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg><p class="font-semibold">Coming Soon</p><p class="text-sm">Dashboard for ${dashboardName} is not yet available.</p></div>`;
+                return;
+            }
+            dashboardContent.innerHTML = dashboard.charts.map(c => `<div class="bg-white p-4 rounded-2xl shadow-sm"><div class="h-64"><canvas id="${c}"></canvas></div></div>`).join('');
+            
+            const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 20, font: { size: 12 } } } }, layout: { padding: { top: 10 } } };
+
+            if (dashboardName === 'Incidents') {
+                chartInstances['incident-category-chart'] = new Chart(document.getElementById('incident-category-chart'), { type: 'doughnut', data: { labels: ['Near Miss', 'Fall', 'Equipment'], datasets: [{ data: [32, 21, 19], backgroundColor: ['#3b82f6', '#f97316', '#ef4444'], borderWidth: 0 }] }, options: {...chartOptions, plugins: {...chartOptions.plugins, title: { display: true, text: 'Incidents by Category' }}} });
+                chartInstances['severity-distribution-chart'] = new Chart(document.getElementById('severity-distribution-chart'), { type: 'bar', data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [8, 24, 40], backgroundColor: ['#ef4444', '#f59e0b', '#22c55e'] }] }, options: {...chartOptions, indexAxis: 'y', plugins: { legend: { display: false }, title: { display: true, text: 'Severity Distribution' } } } });
+                chartInstances['monthly-incidents-chart'] = new Chart(document.getElementById('monthly-incidents-chart'), { type: 'line', data: { labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug'], datasets: [{ label: 'Incidents', data: [12, 19, 11, 17, 9], backgroundColor: 'rgba(79, 70, 229, 0.1)', borderColor: '#4f46e5', tension: 0.4, fill: true }] }, options: {...chartOptions, plugins: { legend: { display: false }, title: { display: true, text: 'Monthly Incident Trend' } } } });
+            } else if (dashboardName === 'Permits') {
+                chartInstances['permit-status-chart'] = new Chart(document.getElementById('permit-status-chart'), { type: 'bar', data: { labels: ['Hot Work', 'Confined Space', 'Height'], datasets: [{ label: 'Active', data: [5, 8, 12], backgroundColor: '#3b82f6' }, { label: 'Expired', data: [2, 3, 5], backgroundColor: '#9ca3af' }] }, options: {...chartOptions, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: {...chartOptions.plugins, title: { display: true, text: 'Work Permit Status' }}} });
+            } else if (dashboardName === 'Audits') {
+                chartInstances['audit-score-chart'] = new Chart(document.getElementById('audit-score-chart'), { type: 'line', data: { labels: ['Q1', 'Q2', 'Q3', 'Q4'], datasets: [{ label: 'Avg. Score', data: [82, 85, 91, 88], backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: '#22c55e', tension: 0.4, fill: true }] }, options: {...chartOptions, plugins: { legend: { display: false }, title: { display: true, text: 'Quarterly Audit Scores (%)' } } } });
             }
         };
+        
+        dashboardTabs.innerHTML = dashboards.map((d, i) => `<button class="dashboard-tab whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors" data-dashboard="${d.name}">${d.name}</button>`).join('');
+        
+        const updateTabs = () => {
+             document.querySelectorAll('.dashboard-tab').forEach(t => {
+                const isActive = t.dataset.dashboard === currentDashboardTab;
+                t.classList.toggle('bg-indigo-600', isActive);
+                t.classList.toggle('text-white', isActive);
+                t.classList.toggle('bg-white', !isActive);
+                t.classList.toggle('text-slate-600', !isActive);
+                t.classList.toggle('shadow-sm', !isActive);
+            });
+        };
+
         dashboardTabs.addEventListener('click', (e) => {
             const tab = e.target.closest('.dashboard-tab');
-            if (!tab) return;
-            document.querySelectorAll('.dashboard-tab').forEach(t => { t.classList.replace('bg-indigo-600', 'bg-white'); t.classList.replace('text-white', 'text-slate-600'); });
-            tab.classList.replace('bg-white', 'bg-indigo-600');
-            tab.classList.replace('text-slate-600', 'text-white');
-            renderDashboard(tab.dataset.dashboard);
+            if (tab) {
+                renderDashboard(tab.dataset.dashboard);
+                updateTabs();
+            }
         });
-        // --- Initial Load ---
-        renderIncidentList(currentIncidentFilter);
-        renderDashboard('Incident Mgt.');
-    });
-    </script>
+        renderDashboard(currentDashboardTab);
+        updateTabs();
+    };
+
+    // --- Initial App Load ---
+    showScreen('url-screen', { isBack: true });
+
+});
+</script>
+
 </body>
 </html>
